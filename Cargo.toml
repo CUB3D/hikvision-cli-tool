@@ -7,6 +7,6 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-serde = "1.0.117"
-serde_xml = "0.9.1"
-uuid = "0.8.1"
+serde = { version = "1.0.117", features = ["derive"] }
+serde-xml-rs = "0.4.0"
+uuid = { version = "0.8.1", features = ["v4"] }
