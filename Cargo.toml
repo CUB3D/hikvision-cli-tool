@@ -1,0 +1,12 @@
+[package]
+name = "hikvision-sadp-client"
+version = "0.1.0"
+authors = ["cub3d"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde = "1.0.117"
+serde_xml = "0.9.1"
+uuid = "0.8.1"
