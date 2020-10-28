@@ -1,160 +1,114 @@
-use serde::{Deserialize, Serialize};
-use std::net::UdpSocket;
+mod hv_client;
+mod types;
+
+use crate::hv_client::HvClient;
+use crate::types::{Password, Probe, ProbeMatch};
+use clap::{App, AppSettings, Arg, SubCommand};
+use cli_table::format::CellFormat;
+use cli_table::{Cell, Row, Table};
+use std::num::NonZeroU64;
 use std::time::Duration;
 use uuid::Uuid;
+use serde::Serialize;
 
 //Questions to answer:
-// What is the method for calculating the password
 // How does activation work
 // How does the password reset work
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
-#[serde(tag = "Types")]
-enum Probe {
-    #[serde(rename = "Update")]
-    Update {
-        #[serde(rename = "Uuid")]
-        uuid: String,
-        #[serde(rename = "PWErrorParse")]
-        pw_error_parse: String,
-        #[serde(rename = "MAC")]
-        mac: String,
-        //TODO: how is this derived, base64(something(password))
-        #[serde(rename = "Password")]
-        password: String,
-        #[serde(rename = "IPv4Address")]
-        ipv4_address: String,
-        #[serde(rename = "CommandPort")]
-        command_port: String,
-        #[serde(rename = "HttpPort")]
-        http_port: String,
-        #[serde(rename = "IPv4SubnetMask")]
-        ipv4_subnet_mask: String,
-        #[serde(rename = "IPv4Gateway")]
-        ipv4_gateway: String,
-        #[serde(rename = "IPv6Address")]
-        ipv6_address: String,
-        #[serde(rename = "IPv6Gateway")]
-        ipv6_gateway: String,
-        #[serde(rename = "IPv6MaskLen")]
-        ipv6_mask_len: u32,
-        #[serde(rename = "DHCP")]
-        dhcp: bool,
-        #[serde(rename = "SDKOverTLSPort")]
-        sdk_over_tls_port: u32,
-    },
-    #[serde(rename = "inquiry")]
-    Inquiry {
-        #[serde(rename = "Uuid")]
-        uuid: String,
-    },
+fn find_cameras(client: &HvClient, uuid: &Uuid) -> Vec<ProbeMatch> {
+    let probe = Probe::Inquiry {
+        uuid: uuid.to_string(),
+    };
+    client
+        .send_broadcast(&probe)
+        .expect("Unable to send discovery broadcast");
+    let mut cameras = vec![];
+    while let Some(probe_match) = client.read_packet() {
+        cameras.push(probe_match);
+    }
+    cameras
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
-struct ProbeMatch {
-    #[serde(rename = "Uuid")]
-    uuid: String,
-    #[serde(rename = "Types")]
-    types: String,
-    #[serde(rename = "DeviceType")]
-    device_type: String,
-    #[serde(rename = "DeviceDescription")]
-    device_description: String,
-    #[serde(rename = "DeviceSN")]
-    device_sn: String,
-    #[serde(rename = "CommandPort")]
-    command_port: u32,
-    #[serde(rename = "HttpPort")]
-    http_port: String,
-    #[serde(rename = "MAC")]
-    mac: String,
-    #[serde(rename = "IPv4Address")]
-    ipv4_address: String,
-    #[serde(rename = "IPv4SubnetMask")]
-    ipv4_subnet_mask: String,
-    #[serde(rename = "IPv4Gateway")]
-    ipv4_gateway: String,
-    #[serde(rename = "IPv6Address")]
-    ipv6_address: String,
-    #[serde(rename = "IPv6Gateway")]
-    ipv6_gateway: String,
-    #[serde(rename = "IPv6MaskLen")]
-    ipv6_mask_len: u32,
-    #[serde(rename = "DHCP")]
-    dhcp: String,
-    #[serde(rename = "AnalogChannelNum")]
-    analog_channel_num: u32,
-    #[serde(rename = "DigitalChannelNum")]
-    digital_channel_num: u32,
-    #[serde(rename = "SoftwareVersion")]
-    software_version: String,
-    #[serde(rename = "DSPVersion")]
-    dsp_version: String,
-    #[serde(rename = "BootTime")]
-    boot_time: String,
-    #[serde(rename = "ResetAbility")]
-    reset_ability: bool,
-    #[serde(rename = "DiskNumber")]
-    disk_number: u32,
-    #[serde(rename = "Activated")]
-    activated: bool,
-    #[serde(rename = "PasswordResetAbility")]
-    password_reset_ability: bool,
-    #[serde(rename = "PasswordResetModeSecond")]
-    password_reset_mode_second: bool,
-    #[serde(rename = "SupportHCPlatform")]
-    support_hc_platform: bool,
-    #[serde(rename = "HCPlatformEnable")]
-    // "true" or "flase", good job hikvision
-    hc_platform_enable: String,
-    #[serde(rename = "IsModifyVerificationCode")]
-    is_modify_verification_code: String,
+fn do_inquire(client: &HvClient, uuid: &Uuid) {
+    println!("Starting discovery!");
+    let cameras = find_cameras(&client, &uuid);
+
+    let title_format = CellFormat::builder().bold(true).build();
+    let mut table_cells = vec![Row::new(vec![
+        Cell::new("Description", title_format),
+        Cell::new("IPv4", title_format),
+        Cell::new("Command Port", title_format),
+        Cell::new("Software Version", title_format),
+        Cell::new("IPv4 Gateway", title_format),
+        Cell::new("HTTP Port", title_format),
+        Cell::new("Device Serial", title_format),
+        Cell::new("IPv4 Subnet Mask", title_format),
+        Cell::new("MAC Address", title_format),
+        Cell::new("DSP Version", title_format),
+
+        Cell::new("Boot Time", title_format),
+        Cell::new("IPv6 Address", title_format),
+        Cell::new("IPv6 Gateway", title_format),
+        Cell::new("IPv6 Prefix Length", title_format),
+        Cell::new("DHCP Enabled", title_format),
+        Cell::new("Supports Hik-Connect", title_format),
+        Cell::new("Hik-Connect Enabled", title_format),
+    ])];
+
+    for probe_match in cameras {
+        table_cells.push(Row::new(vec![
+            Cell::new(&probe_match.device_description, Default::default()),
+            Cell::new(&probe_match.ipv4_address, Default::default()),
+            Cell::new(&probe_match.command_port, Default::default()),
+            Cell::new(&probe_match.software_version, Default::default()),
+            Cell::new(&probe_match.ipv4_gateway, Default::default()),
+            Cell::new(&probe_match.http_port, Default::default()),
+            Cell::new(&probe_match.device_sn, Default::default()),
+            Cell::new(&probe_match.ipv4_subnet_mask, Default::default()),
+            Cell::new(&probe_match.mac, Default::default()),
+            Cell::new(&probe_match.dsp_version, Default::default()),
+            Cell::new(&probe_match.boot_time, Default::default()),
+            Cell::new(&probe_match.ipv6_address, Default::default()),
+            Cell::new(&probe_match.ipv6_gateway, Default::default()),
+            Cell::new(&probe_match.ipv6_mask_len, Default::default()),
+            Cell::new(&probe_match.dhcp, Default::default()),
+            Cell::new(&probe_match.support_hc_platform, Default::default()),
+            Cell::new(&probe_match.hc_platform_enable, Default::default()),
+        ]));
+    }
+    let table = Table::new(table_cells, Default::default()).unwrap();
+    table.print_stdout().unwrap();
 }
 
 fn main() {
-    let socket: UdpSocket = UdpSocket::bind("0.0.0.0:0").unwrap();
-    socket.set_broadcast(true).unwrap();
-    socket
-        .set_read_timeout(Some(Duration::from_secs(5)))
-        .unwrap();
-
-    let probe = Probe::Inquiry {
-        uuid: Uuid::new_v4().to_string(),
-    };
-
-    // let probe = Probe::Update {
-    //     uuid: "".to_string(),
-    //     pw_error_parse: "".to_string(),
-    //     mac: "".to_string(),
-    //     password: "".to_string(),
-    //     ipv4_address: "".to_string(),
-    //     command_port: "".to_string(),
-    //     http_port: "".to_string(),
-    //     ipv4_subnet_mask: "".to_string(),
-    //     ipv4_gateway: "".to_string(),
-    //     ipv6_address: "".to_string(),
-    //     ipv6_gateway: "".to_string(),
-    //     ipv6_mask_len: 0,
-    //     dhcp: false,
-    //     sdk_over_tls_port: 0
-    // };
-
-    println!("Starting discovery!");
-    socket
-        .send_to(
-            serde_xml_rs::to_string(&probe).unwrap().as_bytes(),
-            "255.255.255.255:37020",
+    let matches = App::new("hikvision-sadp-client")
+        .version("0.1")
+        .author("CUB3D")
+        .about("Configure Hikvision IP cameras")
+        .setting(AppSettings::SubcommandRequiredElseHelp)
+        .arg(
+            Arg::with_name("timeout")
+                .short("t")
+                .long("timeout")
+                .value_name("seconds")
+                .help("Sets the socket timeout")
+                .takes_value(true)
+                .default_value("5")
+                .validator(|v| {
+                    v.parse::<NonZeroU64>()
+                        .map(|_| ())
+                        .map_err(|_| "Timeout must be a positive number".to_string())
+                }),
         )
-        .unwrap();
-    let mut recv_buff = [0u8; 5000];
+        .subcommand(SubCommand::with_name("inquire").about("Find IP cameras on local network"))
+        .get_matches();
 
-    println!("Desc\t\tip");
-    while let Ok((n, _addr)) = socket.recv_from(&mut recv_buff) {
-        let buf = &recv_buff[0..n];
+    let our_uuid = Uuid::new_v4();
 
-        let data = std::str::from_utf8(buf).unwrap();
-        let parsed: ProbeMatch = serde_xml_rs::from_str(data).unwrap();
-
-        println!("{}\t{}", parsed.device_description, parsed.ipv4_address);
+    if let Some(_matches) = matches.subcommand_matches("inquire") {
+        let client = HvClient::new_with_timeout(Duration::from_secs(
+            matches.value_of("timeout").unwrap().parse().unwrap(),
+        ));
+        do_inquire(&client, &our_uuid);
     }
 }
