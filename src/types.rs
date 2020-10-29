@@ -1,3 +1,4 @@
+use serde::export::Formatter;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -105,10 +106,33 @@ pub struct ProbeMatchSuccessBody {
     #[serde(rename = "SupportHCPlatform")]
     pub support_hc_platform: bool,
     #[serde(rename = "HCPlatformEnable")]
-    // "true" or "flase", good job hikvision
-    pub hc_platform_enable: String,
+    pub hc_platform_enable: HvTypoBool,
     #[serde(rename = "IsModifyVerificationCode")]
     pub is_modify_verification_code: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, Copy)]
+pub enum HvTypoBool {
+    #[serde(rename = "true")]
+    True,
+    #[serde(rename = "flase")]
+    Flase,
+}
+
+impl From<&HvTypoBool> for bool {
+    fn from(b: &HvTypoBool) -> Self {
+        match *b {
+            HvTypoBool::True => true,
+            HvTypoBool::Flase => false,
+        }
+    }
+}
+
+impl std::fmt::Display for HvTypoBool {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let b: bool = self.into();
+        b.fmt(f)
+    }
 }
 
 #[derive(Deserialize, Debug, Clone, Copy)]
@@ -119,7 +143,6 @@ pub enum ProbeMatchResult {
     Success,
 }
 
-//todo: error (<Result>String</><
 #[derive(Deserialize, Debug, Clone)]
 pub struct ProbeMatch {
     #[serde(rename = "Uuid")]
@@ -178,8 +201,7 @@ pub struct ProbeMatch {
     #[serde(rename = "SupportHCPlatform")]
     support_hc_platform: Option<bool>,
     #[serde(rename = "HCPlatformEnable")]
-    // "true" or "flase", good job hikvision
-    hc_platform_enable: Option<String>,
+    hc_platform_enable: Option<HvTypoBool>,
     #[serde(rename = "IsModifyVerificationCode")]
     is_modify_verification_code: Option<String>,
 }
