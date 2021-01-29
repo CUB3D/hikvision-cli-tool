@@ -61,9 +61,9 @@ dependencies = [
 
 [[package]]
 name = "cli-table"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44e71c24d7b6b40dc2d5ac348959430aa47d1cd9ffabef9852aea44a30e5e0d1"
+checksum = "c568382da2369ef1fcbfc2665c6f93f1b6ec9caf585312d2034d2d2584ea68b9"
 dependencies = [
  "cli-table-derive",
  "termcolor",
