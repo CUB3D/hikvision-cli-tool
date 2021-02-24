@@ -9,6 +9,7 @@ use cli_table::{Cell, Row, Table};
 use std::num::NonZeroU64;
 use std::time::Duration;
 use uuid::Uuid;
+use rsa::{RSAPublicKey, PublicKeyParts};
 
 //Questions to answer:
 // How does activation work
@@ -23,7 +24,8 @@ fn find_cameras(client: &HvClient, uuid: &Uuid) -> Vec<ProbeMatchSuccessBody> {
         .expect("Unable to send discovery broadcast");
     wait_for_cameras(client)
         .into_iter()
-        .map(|c| c.expect("Inquire failed"))
+        .filter(|c| c.is_ok())
+        .map(|c| c.unwrap())
         .collect()
 }
 
@@ -39,6 +41,7 @@ fn print_table(cameras: Vec<ProbeMatchSuccessBody>) -> Table {
     let title_format = CellFormat::builder().bold(true).build();
     let mut table_cells = vec![Row::new(vec![
         Cell::new("Description", title_format),
+        Cell::new("Activated", title_format),
         Cell::new("IPv4", title_format),
         Cell::new("Command Port", title_format),
         Cell::new("Software Version", title_format),
@@ -60,6 +63,7 @@ fn print_table(cameras: Vec<ProbeMatchSuccessBody>) -> Table {
     for probe_match in cameras {
         table_cells.push(Row::new(vec![
             Cell::new(&probe_match.device_description, Default::default()),
+            Cell::new(&probe_match.activated, Default::default()),
             Cell::new(&probe_match.ipv4_address, Default::default()),
             Cell::new(&probe_match.command_port, Default::default()),
             Cell::new(&probe_match.software_version, Default::default()),
@@ -127,6 +131,12 @@ fn main() {
                         .possible_values(&["true", "false"]),
                 )
                 .arg(
+                    Arg::with_name("http_port")
+                        .long("http_port")
+                        .required(false)
+                        .value_name("port"),
+                )
+                .arg(
                     Arg::with_name("password")
                         .long("password")
                         .required(true)
@@ -158,6 +168,11 @@ fn main() {
                 .map(|v| v == "true")
                 .unwrap_or(camera.dhcp);
 
+            let http_port = matches
+                .value_of("http_port")
+                .map(|v| v.parse::<u32>().unwrap())
+                .unwrap_or(camera.http_port);
+
             let password = matches.value_of("password").expect("No password given");
 
             let probe = Probe::Update {
@@ -167,7 +182,7 @@ fn main() {
                 password: Password::hash(password),
                 ipv4_address: camera.ipv4_address.clone(),
                 command_port: camera.command_port.to_string(),
-                http_port: camera.http_port.clone(),
+                http_port,
                 ipv4_subnet_mask: camera.ipv4_subnet_mask.clone(),
                 ipv4_gateway: camera.ipv4_gateway.clone(),
                 ipv6_address: camera.ipv6_address.clone(),
@@ -199,4 +214,32 @@ fn main() {
             println!("Target camera not found");
         }
     }
+
+    use rsa::{PublicKey, RSAPrivateKey, PaddingScheme};
+    use rand::rngs::OsRng;
+
+    let mut rng = OsRng;
+    // I guess they didn't notice this off-by-one...
+    let bits = 1023;
+    let priv_key = RSAPrivateKey::new(&mut rng, bits).expect("failed to generate a key");
+    let pub_key = RSAPublicKey::from(&priv_key);
+
+    let der_bytes = rsa_der::public_key_to_der(&pub_key.n().to_bytes_be(), &pub_key.e().to_bytes_be());
+
+    let code = base64::encode(der_bytes);
+
+    let p = Probe::ExchangeCode {
+        uuid: Uuid::new_v4().to_string(),
+        mac: "4c-bd-8f-f5-96-91".to_string(),
+        code: code
+    };
+    client.send_broadcast(&p).unwrap();
+
+    let p = Probe::Activate {
+        uuid: Uuid::new_v4().to_string(),
+        mac: "4c-bd-8f-f5-96-91".to_string(),
+        password: Password::hash("test123").into()
+    };
+    client.send_broadcast(&p).unwrap();
+
 }
