@@ -4,8 +4,7 @@ mod types;
 use crate::hv_client::HvClient;
 use crate::types::{Password, Probe, ProbeMatchSuccessBody};
 use clap::{App, AppSettings, Arg, SubCommand};
-use cli_table::format::CellFormat;
-use cli_table::{Cell, Row, Table};
+use cli_table::{print_stdout, Cell, Style, Table, TableStruct};
 use std::num::NonZeroU64;
 use std::time::Duration;
 use uuid::Uuid;
@@ -35,58 +34,60 @@ fn wait_for_cameras(client: &HvClient) -> Vec<Result<ProbeMatchSuccessBody, Stri
     cameras
 }
 
-fn print_table(cameras: Vec<ProbeMatchSuccessBody>) -> Table {
-    let title_format = CellFormat::builder().bold(true).build();
-    let mut table_cells = vec![Row::new(vec![
-        Cell::new("Description", title_format),
-        Cell::new("IPv4", title_format),
-        Cell::new("Command Port", title_format),
-        Cell::new("Software Version", title_format),
-        Cell::new("IPv4 Gateway", title_format),
-        Cell::new("HTTP Port", title_format),
-        Cell::new("Device Serial", title_format),
-        Cell::new("IPv4 Subnet Mask", title_format),
-        Cell::new("MAC Address", title_format),
-        Cell::new("DSP Version", title_format),
-        Cell::new("Boot Time", title_format),
-        Cell::new("IPv6 Address", title_format),
-        Cell::new("IPv6 Gateway", title_format),
-        Cell::new("IPv6 Prefix Length", title_format),
-        Cell::new("DHCP Enabled", title_format),
-        Cell::new("Supports Hik-Connect", title_format),
-        Cell::new("Hik-Connect Enabled", title_format),
-    ])];
+fn get_table(cameras: Vec<ProbeMatchSuccessBody>) -> TableStruct {
+    let title = vec![
+        "Description".cell().bold(true),
+        "IPv4".cell().bold(true),
+        "Command Port".cell().bold(true),
+        "Software Version".cell().bold(true),
+        "IPv4 Gateway".cell().bold(true),
+        "HTTP Port".cell().bold(true),
+        "Device Serial".cell().bold(true),
+        "IPv4 Subnet Mask".cell().bold(true),
+        "MAC Address".cell().bold(true),
+        "DSP Version".cell().bold(true),
+        "Boot Time".cell().bold(true),
+        "IPv6 Address".cell().bold(true),
+        "IPv6 Gateway".cell().bold(true),
+        "IPv6 Prefix Length".cell().bold(true),
+        "DHCP Enabled".cell().bold(true),
+        "Supports Hik-Connect".cell().bold(true),
+        "Hik-Connect Enabled".cell().bold(true),
+    ];
 
-    for probe_match in cameras {
-        table_cells.push(Row::new(vec![
-            Cell::new(&probe_match.device_description, Default::default()),
-            Cell::new(&probe_match.ipv4_address, Default::default()),
-            Cell::new(&probe_match.command_port, Default::default()),
-            Cell::new(&probe_match.software_version, Default::default()),
-            Cell::new(&probe_match.ipv4_gateway, Default::default()),
-            Cell::new(&probe_match.http_port, Default::default()),
-            Cell::new(&probe_match.device_sn, Default::default()),
-            Cell::new(&probe_match.ipv4_subnet_mask, Default::default()),
-            Cell::new(&probe_match.mac, Default::default()),
-            Cell::new(&probe_match.dsp_version, Default::default()),
-            Cell::new(&probe_match.boot_time, Default::default()),
-            Cell::new(&probe_match.ipv6_address, Default::default()),
-            Cell::new(&probe_match.ipv6_gateway, Default::default()),
-            Cell::new(&probe_match.ipv6_mask_len, Default::default()),
-            Cell::new(&probe_match.dhcp, Default::default()),
-            Cell::new(&probe_match.support_hc_platform, Default::default()),
-            Cell::new(&probe_match.hc_platform_enable, Default::default()),
-        ]));
-    }
-    Table::new(table_cells, Default::default()).unwrap()
+    cameras
+        .into_iter()
+        .map(|probe_match| {
+            vec![
+                probe_match.device_description.cell(),
+                probe_match.ipv4_address.cell(),
+                probe_match.command_port.cell(),
+                probe_match.software_version.cell(),
+                probe_match.ipv4_gateway.cell(),
+                probe_match.http_port.cell(),
+                probe_match.device_sn.cell(),
+                probe_match.ipv4_subnet_mask.cell(),
+                probe_match.mac.cell(),
+                probe_match.dsp_version.cell(),
+                probe_match.boot_time.cell(),
+                probe_match.ipv6_address.cell(),
+                probe_match.ipv6_gateway.cell(),
+                probe_match.ipv6_mask_len.cell(),
+                probe_match.dhcp.cell(),
+                probe_match.support_hc_platform.cell(),
+                probe_match.hc_platform_enable.cell(),
+            ]
+        })
+        .table()
+        .title(title)
 }
 
 fn do_inquire(client: &HvClient, uuid: &Uuid) {
     println!("Starting discovery!");
     let cameras = find_cameras(&client, &uuid);
 
-    let table = print_table(cameras);
-    table.print_stdout().unwrap();
+    let table = get_table(cameras);
+    print_stdout(table).unwrap();
 }
 
 fn main() {
@@ -191,7 +192,7 @@ fn main() {
                         return;
                     }
                     println!("Camera updated successfully, new config:");
-                    print_table(vec![camera]).print_stdout().unwrap()
+                    print_stdout(get_table(vec![camera])).unwrap();
                 }
                 Err(_msg) => println!("Failed to update camera settings, is the password correct?"),
             }
