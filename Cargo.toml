@@ -13,4 +13,4 @@ uuid = { version = "0.8.2", features = ["v4"] }
 md5 = "0.7.0"
 base64 = "0.13.0"
 clap = "2.33.3"
-cli-table = "0.3"
+cli-table = "0.4"

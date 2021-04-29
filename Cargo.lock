@@ -63,12 +63,24 @@ dependencies = [
 
 [[package]]
 name = "cli-table"
-version = "0.3.2"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1267cd01cc8e434c79edd5475b77fc7176075187dae7fba7f27c35f1c08476a2"
+checksum = "c568382da2369ef1fcbfc2665c6f93f1b6ec9caf585312d2034d2d2584ea68b9"
 dependencies = [
+ "cli-table-derive",
  "termcolor",
  "unicode-width",
+]
+
+[[package]]
+name = "cli-table-derive"
+version = "0.4.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "efe942512e068e15991cbcef4e8182884555febbb21b5b4faf5dd5561850141a"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
