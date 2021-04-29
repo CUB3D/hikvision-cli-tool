@@ -1,0 +1,16 @@
+version: 2
+updates:
+- package-ecosystem: cargo
+  directory: "/"
+  schedule:
+    interval: daily
+  open-pull-requests-limit: 10
+  ignore:
+  - dependency-name: serde
+    versions:
+    - 1.0.124
+  - dependency-name: cli-table
+    versions:
+    - 0.4.2
+    - 0.4.4
+    - 0.4.5
