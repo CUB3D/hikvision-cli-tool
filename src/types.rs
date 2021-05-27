@@ -116,7 +116,7 @@ pub enum Probe {
         #[serde(rename = "MAC")]
         mac: String,
         #[serde(rename = "Password")]
-        password: Password
+        password: Password,
     },
     #[serde(rename = "getsecurityquestion")]
     GetSecurityQuestion {
@@ -260,9 +260,7 @@ pub enum ProbeMatchResult {
 
 #[derive(Deserialize, Debug, Clone, Copy)]
 #[serde(tag = "Types")]
-pub struct ProbeMatchBody {
-
-}
+pub struct ProbeMatchBody {}
 
 #[derive(Deserialize, Debug, Clone)]
 pub enum ProbeMatch2 {
@@ -280,7 +278,7 @@ pub enum ProbeMatch2 {
         #[serde(rename = "Result")]
         result: ProbeMatchResult,
         #[serde(rename = "Code")]
-        code: String
+        code: String,
     },
     #[serde(rename = "getencryptstring")]
     GetEncryptString {
@@ -289,7 +287,7 @@ pub enum ProbeMatch2 {
         #[serde(rename = "Result")]
         result: ProbeMatchResult,
         #[serde(rename = "EncryptString")]
-        encrypt_string: String
+        encrypt_string: String,
     },
     #[serde(rename = "exchangecode")]
     ExchangeCode {
@@ -298,7 +296,7 @@ pub enum ProbeMatch2 {
         #[serde(rename = "Result")]
         result: ProbeMatchResult,
         #[serde(rename = "Code")]
-        code: String
+        code: String,
     },
     // Yes the space is intentional...
     #[serde(rename = "activate ")]
@@ -307,7 +305,7 @@ pub enum ProbeMatch2 {
         uuid: String,
         #[serde(rename = "Result")]
         result: ProbeMatchResult,
-    }
+    },
 }
 
 #[derive(Deserialize, Debug, Clone)]

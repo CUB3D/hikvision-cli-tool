@@ -6,10 +6,10 @@ use crate::types::{Password, Probe, ProbeMatchSuccessBody};
 use clap::{App, AppSettings, Arg, SubCommand};
 use cli_table::format::CellFormat;
 use cli_table::{Cell, Row, Table};
+use rsa::{PublicKeyParts, RSAPublicKey};
 use std::num::NonZeroU64;
 use std::time::Duration;
 use uuid::Uuid;
-use rsa::{RSAPublicKey, PublicKeyParts};
 
 //Questions to answer:
 // How does activation work
@@ -215,31 +215,30 @@ fn main() {
         }
     }
 
-    use rsa::{PublicKey, RSAPrivateKey, PaddingScheme};
-    use rand::rngs::OsRng;
+    //use rsa::{PublicKey, RSAPrivateKey, PaddingScheme};
+    //use rand::rngs::OsRng;
 
-    let mut rng = OsRng;
-    // I guess they didn't notice this off-by-one...
-    let bits = 1023;
-    let priv_key = RSAPrivateKey::new(&mut rng, bits).expect("failed to generate a key");
-    let pub_key = RSAPublicKey::from(&priv_key);
-
-    let der_bytes = rsa_der::public_key_to_der(&pub_key.n().to_bytes_be(), &pub_key.e().to_bytes_be());
-
-    let code = base64::encode(der_bytes);
-
-    let p = Probe::ExchangeCode {
-        uuid: Uuid::new_v4().to_string(),
-        mac: "4c-bd-8f-f5-96-91".to_string(),
-        code: code
-    };
-    client.send_broadcast(&p).unwrap();
-
-    let p = Probe::Activate {
-        uuid: Uuid::new_v4().to_string(),
-        mac: "4c-bd-8f-f5-96-91".to_string(),
-        password: Password::hash("test123").into()
-    };
-    client.send_broadcast(&p).unwrap();
-
+    // let mut rng = OsRng;
+    // // I guess they didn't notice this off-by-one...
+    // let bits = 1023;
+    // let priv_key = RSAPrivateKey::new(&mut rng, bits).expect("failed to generate a key");
+    // let pub_key = RSAPublicKey::from(&priv_key);
+    //
+    // let der_bytes = rsa_der::public_key_to_der(&pub_key.n().to_bytes_be(), &pub_key.e().to_bytes_be());
+    //
+    // let code = base64::encode(der_bytes);
+    //
+    // let p = Probe::ExchangeCode {
+    //     uuid: Uuid::new_v4().to_string(),
+    //     mac: "4c-bd-8f-f5-96-91".to_string(),
+    //     code: code
+    // };
+    // client.send_broadcast(&p).unwrap();
+    //
+    // let p = Probe::Activate {
+    //     uuid: Uuid::new_v4().to_string(),
+    //     mac: "4c-bd-8f-f5-96-91".to_string(),
+    //     password: Password::hash("test123").into()
+    // };
+    // client.send_broadcast(&p).unwrap();
 }
