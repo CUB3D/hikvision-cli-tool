@@ -12,5 +12,5 @@ serde-xml-rs = "0.5.1"
 uuid = { version = "0.8.2", features = ["v4"] }
 md5 = "0.7.0"
 base64 = "0.13.0"
-clap = "2.33.3"
+clap = "3.1.5"
 cli-table = { version = "0.4", default-features = false }
